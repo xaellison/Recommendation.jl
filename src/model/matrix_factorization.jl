@@ -67,20 +67,16 @@ function fit!(recommender::MatrixFactorization;
             shuffle!(nonzero_indices)
         end
 
-        for idx in nonzero_indices
-            r = recommender.data.R[idx]
+        begin
+            r = recommender.data.R
+            Qt = transpose(Q)
+            err = r - P * Qt
+            if any(abs.(err) .>= eps); converged = false; end
 
-            u, i = idx[1], idx[2]
-            uv, iv = P[u, :], Q[i, :]
-
-            err = r - dot(uv, iv)
-            if abs(err) >= eps; converged = false; end
-
-            grad = -2 * (err * iv - reg * uv)
-            P[u, :] = uv - learning_rate * grad
-
-            grad = -2 * (err * uv - reg * iv)
-            Q[i, :] = iv - learning_rate * grad
+            grad = -2 * (err * Q - reg * P)
+            P -= learning_rate * grad
+            grad = -2 * (transpose(err) * P - reg * Q)
+            Q -= learning_rate * grad
         end
 
         if converged; break; end;
